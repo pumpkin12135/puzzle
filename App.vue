@@ -25,8 +25,7 @@
         partList: [], // 卡槽
         imgList: [], // 拼图块
         rotateStatus: true, // 拼图旋转状态
-        image: 'http://tva1.sinaimg.cn/mw1024/006yt1Omgy1gxkooa7b2mj31kn14gtt8.jpg', // 拼图图片路径
-        backimage : ''
+        image: 'http://tva1.sinaimg.cn/mw1024/006yt1Omgy1gxkooa7b2mj31kn14gtt8.jpg' // 拼图图片路径
       }
     },
     watch: {
@@ -68,7 +67,6 @@
           that.canvasWidth = document.documentElement.clientWidth-10
         })()
       }
-      console.log(this.canvasWidth, this.canvasHeight)
       this.initGame()
     },
     methods: {
@@ -79,7 +77,6 @@
           this.imgList.push({ // 拼图数组
             x: 8 - i % 8, // 第几列
             y: 6 - parseInt((i / 8)), // 第几行
-            //backgroundimage : `url(${this.image})`,
             rotate: parseInt(Math.random() * 4) * 0.25 // 初始旋转角度，单位为turn
           })
           this.partList.push({ // 卡槽数组
@@ -89,7 +86,7 @@
             check: false // 是否放入正确的拼图
           })
         }
-        this.imgList = this.imgList.sort(() => Math.random() - 0.5) // 打乱拼图数组顺序（可以不要）
+       // this.imgList = this.imgList.sort(() => Math.random() - 0.5) // 打乱拼图数组顺序（可以不要）
       },
       moveImg(e, index) { // 移动拼图
         const _this = this
@@ -101,16 +98,24 @@
           const sY = e.clientY - el.offsetTop
           const elLeft = parseInt(el.style.left) / 100
           const elTop = parseInt(el.style.top) / 100
-          const elPart = _this.partList.find((elem) => elem.x == (8 - elLeft) && elem.y == (6 - elTop))
-          if (elPart) { // 此处是判断将拼图从错误的卡槽里移除时，清除掉卡槽的填充状态
+
+          const toelLeft = elLeft < 7.5 ? Math.round(elLeft) : 7
+          const toelTop = elTop < 5.5 ? Math.round(elTop) : 5
+          //TODO 如何判断是原来的东西离开了 而不是第二个来了呢
+          const elPart = _this.partList.find((elem) => elem.x == (8 - toelLeft) && elem.y == (6 - toelTop))
+          if (elPart && elPart.fill) { // 此处是判断将拼图从错误的卡槽里移除时，清除掉卡槽的填充状态
             const partIndex = _this.partList.indexOf(elPart)
             _this.partList[partIndex].fill = false
           }
-          document.onmousemove = (e) => { // 拼图随鼠标移动
+          document.onmousemove = (e) => { // 拼图随鼠标移动,改变拼图的top和left属性值 设置边界
             const eX = e.clientX - sX
             const eY = e.clientY - sY
-            el.style.left = eX + 'px'
-            el.style.top = eY + 'px'
+            if(eX > 0 && eX < this.canvasWidth - 90) {
+              el.style.left = eX + 'px'
+            }
+            if(eY > 0 && eY < this.canvasHeight - 80) {
+              el.style.top = eY + 'px'
+            }
           }
           document.onmouseup = (e) => { // 移动结束时的操作
             document.onmousemove = null
@@ -205,7 +210,6 @@
         }
       },
       randomStyle(img) { // 规律生成拼图块，随机生成位置与旋转角度，更新图片
-        console.log(this.image)
         return (img) => {
           return {
             'backgroundPosition': `${img.x * 100}px ${img.y * 100}px`,
@@ -243,8 +247,7 @@
     position: absolute;
   }
 
-  .backimage,
-  input {
+  .backimage {
     width: 100%;
     height: 100%;
     position: absolute;
