@@ -1,9 +1,10 @@
 <template>
   <div class="pintu_area">
+    <img class="backimage" src="./my2.png" />
     <div v-for="(part, index) in partList" :key="'part' + index" class="pintu_part"></div>
     <div v-for="(img, index) in imgList" :key="index" :style="{'backgroundPosition': `${img.x * 100}px ${img.y * 100}px`,
-            'top': Math.random() * 500 + 150 + 'px',
-            'left': Math.random() * 600 + 800 + 'px',
+            'top': Math.random() * (canvasHeight - 200) + 100 + 'px',
+            'left': Math.random() * (canvasWidth - 900) + 810 + 'px',
             'transform': `rotate(${img.rotate}turn)`,
             'backgroundImage': `url(${this.image})`}" class="part_img"
          @mousedown="moveImg($event,index)" @contextmenu.prevent="rotateImg($event, index)">
@@ -14,19 +15,60 @@
 
 </template>
 
-
 <script>
   export default {
     name: 'Canvas',
     data() {
       return {
+        canvasWidth: document.documentElement.clientWidth-10,   //600 1400   500 1000
+        canvasHeight: document.documentElement.clientHeight-22,
         partList: [], // 卡槽
         imgList: [], // 拼图块
         rotateStatus: true, // 拼图旋转状态
-        image: 'https://img0.baidu.com/it/u=3429479819,3767560213&fm=253&fmt=auto&app=138&f=JPEG?w=753&h=500' // 拼图图片路径
+        image: 'http://tva1.sinaimg.cn/mw1024/006yt1Omgy1gxkooa7b2mj31kn14gtt8.jpg', // 拼图图片路径
+        backimage : ''
+      }
+    },
+    watch: {
+      //监听长度和宽度 自适应大小
+      canvasHeight (val) {
+        // 为了避免频繁触发resize函数导致页面卡顿，使用定时器
+        if (!this.timer) {
+          // 一旦监听到的screenWidth值改变，就将其重新赋给data里的screenWidth
+          this.canvasHeight = val
+          this.timer = true
+          let that = this
+          setTimeout(function () {
+            // 打印screenWidth变化的值
+            //console.log(that.canvasHeight)
+            that.timer = false
+          }, 400)
+        }
+      },
+      canvasWidth (val) {
+        // 为了避免频繁触发resize函数导致页面卡顿，使用定时器
+        if (!this.timer) {
+          // 一旦监听到的screenWidth值改变，就将其重新赋给data里的screenWidth
+          this.canvasWidth = val
+          this.timer = true
+          let that = this
+          setTimeout(function () {
+            // 打印screenWidth变化的值
+            //console.log(that.canvasWidth)
+            that.timer = false
+          }, 400)
+        }
       }
     },
     mounted() {
+      const that = this
+      window.onresize = () => {
+        return (() => {
+          that.canvasHeight = document.documentElement.clientHeight-22
+          that.canvasWidth = document.documentElement.clientWidth-10
+        })()
+      }
+      console.log(this.canvasWidth, this.canvasHeight)
       this.initGame()
     },
     methods: {
@@ -83,8 +125,8 @@
               if (!part.fill) { // 如果卡槽是空的，将拼图移入离它最近的卡槽里并检查是否是正确的放入正确的卡槽里
                 const partIndex = _this.partList.indexOf(part)
                 _this.partList[partIndex].fill = true
-                el.style.left = toLeft * 100 + 'px'
-                el.style.top = toTop * 100 + 'px'
+                el.style.left = toLeft * 100 + 9 + 'px'
+                el.style.top = toTop * 100 + 9 + 'px'
                 _this.checkImg(_this, el, index)
               }
             }
@@ -189,16 +231,26 @@
   }
 
   .pintu_part {
-    width: 100px;
-    height: 100px;
+    width: 98px;
+    height: 98px;
     border: 1px solid #fff;
   }
 
   .part_img {
-    width: 100px;
-    height: 100px;
+    width: 98px;
+    height: 98px;
     background-size: 800px 600px;
     position: absolute;
+  }
+
+  .backimage,
+  input {
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: -1;
   }
 
   .thumb,
