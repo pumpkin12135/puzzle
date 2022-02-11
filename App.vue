@@ -1,24 +1,17 @@
 <template>
-  <div class="canvas-container" >
-    <div class="canvas-content">
-      <canvas
-              id="canvas"
-              class="canvas-item"
-              :width="canvasWidth"
-              :height="canvasHeight"
-
-              @mousedown="canvasClick($event)"
-              @mouseup="stopdrag($event)"
-              @mouseout="stopdrag($event)"
-              @mousemove="drag($event)"
-              @dblclick="dblik($event)"
-
-              @touchstart="canvasClick($event)"
-              @touchmove="drag($event)"
-              @touchend="stopdrag($event)"
-      />
+  <div class="pintu_area">
+    <div v-for="(part, index) in partList" :key="'part' + index" class="pintu_part"></div>
+    <div v-for="(img, index) in imgList" :key="index" :style="{'backgroundPosition': `${img.x * 100}px ${img.y * 100}px`,
+            'top': Math.random() * 500 + 150 + 'px',
+            'left': Math.random() * 600 + 800 + 'px',
+            'transform': `rotate(${img.rotate}turn)`,
+            'backgroundImage': `url(${this.image})`}" class="part_img"
+         @mousedown="moveImg($event,index)" @contextmenu.prevent="rotateImg($event, index)">
     </div>
+    <img class="thumb" :src="image">
+    <input type="file" accept=".jpg,.png" @change="chooseImg($event)" title="点击更换图片">
   </div>
+
 </template>
 
 
@@ -27,364 +20,159 @@
     name: 'Canvas',
     data() {
       return {
-        canvasWidth: document.documentElement.clientWidth-10,
-        canvasHeight: document.documentElement.clientHeight-22,
-        select : -1,
-        isDragging : false,
-        lastx: 0,
-        lasty: 0,
-        points : [
-          {
-            p: [{x: 100, y: 50}, {x: 150, y: 50}, {x: 150, y: 150}, {x: 200, y: 150}, {x: 200, y: 200}, {x: 100, y: 200}],
-            color: "#ffd58b",
-            click: false,
-            drag: false,
-            types: 6,
-            xmin : 100,
-            xmax : 200,
-            ymin : 50,
-            ymax : 200
-          },
-          {
-            p: [{x: 100, y: 0}, {x: 100, y: 50}, {x: 300, y: 50}, {x: 300, y: 0}],
-            color: "#ffd58b",
-            click: false,
-            drag: false,
-            types: 4,
-            xmin : 100,
-            xmax : 300,
-            ymin : 0,
-            ymax : 50
-          },
-          {
-            p: [{x: 150, y: 200}, {x: 200, y: 200}, {x: 200, y: 250},{x: 250, y: 250}, {x: 250, y: 300}, {x: 100, y: 300},{x: 100, y: 250}, {x: 150, y: 250}],
-            color: "#ffd58b",
-            click: false,
-            drag: false,
-            types: 8,
-            xmin : 100,
-            xmax : 250,
-            ymin : 200,
-            ymax : 300
-          },
-          {
-            p: [{x: 150, y: 300}, {x: 200, y: 300}, {x: 200, y: 400},{x: 150, y: 400}, {x: 150, y: 450}, {x: 100, y: 450},{x: 100, y: 350}, {x: 150, y: 350}],
-            color: "#ffd58b",
-            click: false,
-            drag: false,
-            types: 8,
-            xmin : 100,
-            xmax : 200,
-            ymin : 300,
-            ymax : 450
-          }
-        ],
-        points2 : [
-          {
-            p: [{x: 100, y: 50}, {x: 150, y: 50}, {x: 150, y: 150}, {x: 200, y: 150}, {x: 200, y: 200}, {x: 100, y: 200}],
-            color: "#ffd58b",
-            click: false,
-            drag: false,
-            types: 6,
-            xmin : 100,
-            xmax : 200,
-            ymin : 50,
-            ymax : 200
-          },
-          {
-            p: [{x: 100, y: 0}, {x: 100, y: 50}, {x: 300, y: 50}, {x: 300, y: 0}],
-            color: "#ffd58b",
-            click: false,
-            drag: false,
-            types: 4,
-            xmin : 100,
-            xmax : 300,
-            ymin : 0,
-            ymax : 50
-          },
-          {
-            p: [{x: 150, y: 200}, {x: 200, y: 200}, {x: 200, y: 250},{x: 250, y: 250}, {x: 250, y: 300}, {x: 100, y: 300},{x: 100, y: 250}, {x: 150, y: 250}],
-            color: "#ffd58b",
-            click: false,
-            drag: false,
-            types: 8,
-            xmin : 100,
-            xmax : 250,
-            ymin : 200,
-            ymax : 300
-          },
-          {
-            p: [{x: 150, y: 300}, {x: 200, y: 300}, {x: 200, y: 400},{x: 150, y: 400}, {x: 150, y: 450}, {x: 100, y: 450},{x: 100, y: 350}, {x: 150, y: 350}],
-            color: "#ffd58b",
-            click: false,
-            drag: false,
-            types: 8,
-            xmin : 100,
-            xmax : 200,
-            ymin : 300,
-            ymax : 450
-          }
-        ]
+        partList: [], // 卡槽
+        imgList: [], // 拼图块
+        rotateStatus: true, // 拼图旋转状态
+        image: 'https://img0.baidu.com/it/u=3429479819,3767560213&fm=253&fmt=auto&app=138&f=JPEG?w=753&h=500' // 拼图图片路径
       }
     },
-    watch: {
-      //监听长度和宽度 自适应大小
-      canvasHeight (val) {
-        // 为了避免频繁触发resize函数导致页面卡顿，使用定时器
-        if (!this.timer) {
-          // 一旦监听到的screenWidth值改变，就将其重新赋给data里的screenWidth
-          this.canvasHeight = val
-          this.timer = true
-          let that = this
-          setTimeout(function () {
-            // 打印screenWidth变化的值
-            console.log(that.canvasHeight)
-            that.draw()
-            that.timer = false
-          }, 400)
-        }
-      },
-      canvasWidth (val) {
-        // 为了避免频繁触发resize函数导致页面卡顿，使用定时器
-        if (!this.timer) {
-          // 一旦监听到的screenWidth值改变，就将其重新赋给data里的screenWidth
-          this.canvasWidth = val
-          this.timer = true
-          let that = this
-          setTimeout(function () {
-            // 打印screenWidth变化的值
-            console.log(that.canvasWidth)
-            that.draw()
-            that.timer = false
-          }, 400)
-        }
-      }
-    },
-
     mounted() {
-      const canvas = document.querySelector('#canvas')
-      this.context = canvas.getContext('2d')
-      this.draw()
-
-      const that = this
-      window.onresize = () => {
-        return (() => {
-          that.canvasHeight = document.documentElement.clientHeight-22
-          that.canvasWidth = document.documentElement.clientWidth-10
-        })()
-      }
+      this.initGame()
     },
     methods: {
-      draw(){
-        // 清除画布，准备绘制
-        this.context.clearRect(0, 0, canvas.width, canvas.height);
-        //遍历数组，以每个点为起点画图
-        for (var i = 0; i < this.points.length; i++) {
-          this.context.beginPath();
-          this.context.moveTo(this.points[i].p[0].x, this.points[i].p[0].y);
-          for (var j = 0; j < this.points[i].p.length; j++) {
-            this.context.lineTo(this.points[i].p[j].x, this.points[i].p[j].y);
-          }
-          this.context.lineTo(this.points[i].p[0].x, this.points[i].p[0].y);
-          this.context.strokeStyle = "black";
-          this.context.lineWidth = "3";
-          this.context.fillStyle = this.points[i].color;
-          this.context.stroke();
-          this.context.fill();
-          this.context.closePath();
+      initGame() { // 游戏初始化
+        this.imgList = []
+        this.partList = []
+        for (let i = 0; i < 48; i++) { // 循环遍历生成拼图数组与对应卡槽数组
+          this.imgList.push({ // 拼图数组
+            x: 8 - i % 8, // 第几列
+            y: 6 - parseInt((i / 8)), // 第几行
+            //backgroundimage : `url(${this.image})`,
+            rotate: parseInt(Math.random() * 4) * 0.25 // 初始旋转角度，单位为turn
+          })
+          this.partList.push({ // 卡槽数组
+            x: 8 - i % 8, // 第几列
+            y: 6 - parseInt((i / 8)), //第几行
+            fill: false, // 是否包含一个拼图块
+            check: false // 是否放入正确的拼图
+          })
         }
+        this.imgList = this.imgList.sort(() => Math.random() - 0.5) // 打乱拼图数组顺序（可以不要）
       },
-      canvasClick(e){
-        if(e.touches){ //判断是鼠标还是触摸
-          console.log('touchdown', e)
-          var clickX = e.touches[0].pageX - canvas.offsetLeft;
-          var clickY = e.touches[0].pageY - canvas.offsetTop;
-        }
-        else{
-          console.log('mousedown', e)
-          var clickX = e.pageX - canvas.offsetLeft;
-          var clickY = e.pageY - canvas.offsetTop;
-        }
-
-
-        for (var i = 0; i < this.points.length; i++) {
-          var flag = false;
-          if (this.points[i].types == 6) {
-            flag = this.anglecompult(this.points[i].p, clickX, clickY);
-          } else if (this.points[i].types == 4) {
-            flag = this.reactcompult(this.points[i].p, clickX, clickY);
-          } else if (this.points[i].types == 8 && i == 2) {
-            flag = this.thirdcompult(this.points[i].p, clickX, clickY);
-          } else if (this.points[i].types == 8 && i == 3) {
-            flag = this.fouthcompult(this.points[i].p, clickX, clickY)
+      moveImg(e, index) { // 移动拼图
+        const _this = this
+        if (!this.partList[index].check && e.button < 1) { // 判断当前卡片未放置到正确位置切是左键点击
+          const el = e.target
+          el.style.transition = "none"
+          el.style.zIndex = 99
+          const sX = e.clientX - el.offsetLeft
+          const sY = e.clientY - el.offsetTop
+          const elLeft = parseInt(el.style.left) / 100
+          const elTop = parseInt(el.style.top) / 100
+          const elPart = _this.partList.find((elem) => elem.x == (8 - elLeft) && elem.y == (6 - elTop))
+          if (elPart) { // 此处是判断将拼图从错误的卡槽里移除时，清除掉卡槽的填充状态
+            const partIndex = _this.partList.indexOf(elPart)
+            _this.partList[partIndex].fill = false
           }
-          if (flag == true) {
-            this.isDragging = true;
-            this.points[i].click = true;
-            this.points[i].drag = true;
-            this.select = i;
-            this.lastx = clickX;
-            this.lasty = clickY;
-            console.log(this.lastx, this.lasty);
-          } else {
-            this.points[i].click = false;
-            this.points[i].drag = false;
+          document.onmousemove = (e) => { // 拼图随鼠标移动
+            const eX = e.clientX - sX
+            const eY = e.clientY - sY
+            el.style.left = eX + 'px'
+            el.style.top = eY + 'px'
           }
-        }
-      },
-      stopdrag(e){
-        console.log("stopmove");
-        //this.lasty = 0;
-        // this.lastx = 0;
-        if(this.select != -1) {
-          for (var j = 0; j < this.points[this.select].p.length; j++) {  //结束后吧points2的值更新
-            this.points2[this.select].p[j].x = this.points[this.select].p[j].x;
-            this.points2[this.select].p[j].y = this.points[this.select].p[j].y;
-            this.points2[this.select].xmin = this.points[this.select].xmin;
-            this.points2[this.select].xmax = this.points[this.select].xmax;
-            this.points2[this.select].ymin = this.points[this.select].ymin;
-            this.points2[this.select].ymax = this.points[this.select].ymax;
-          }
-        }
-        this.isDragging = false;
-      },
-      dblik(e){   //旋转90度
-        if(e.touches){
-          var x = e.touches[0].pageX - canvas.offsetLeft;
-          var y = e.touches[0].pageY - canvas.offsetTop;
-        }
-        else{
-          var x = e.pageX - canvas.offsetLeft;
-          var y = e.pageY - canvas.offsetTop;
-        }
-
-        // 将圆圈移动到鼠标位置
-        var changdu = this.points[this.select].p.length;
-
-        var yuanX = this.points[this.select].p[0].x;
-        var yuanY = this.points[this.select].p[0].y;
-
-        var yuanX2 = this.points2[this.select].p[0].x;
-        var yuanY2 = this.points2[this.select].p[0].y;
-        var xianx;
-        var xianx2;
-        var xiany;
-        var xiany2;
-        var xiebian;
-        for (var j = 1; j < changdu; j++) {
-          xianx = (this.points[this.select].p[j].x - yuanX) * (Math.cos((2 * Math.PI / 360) * 90)) - (this.points[this.select].p[j].y - yuanY) * (Math.sin((2 * Math.PI / 360) * 90)) + yuanX;
-          xiany = (this.points[this.select].p[j].x - yuanX) * (Math.sin((2 * Math.PI / 360) * 90)) + (this.points[this.select].p[j].y - yuanY) * (Math.cos((2 * Math.PI / 360) * 90)) + yuanY;
-          this.points[this.select].p[j].x = xianx;
-          this.points[this.select].p[j].y = xiany;
-
-          xianx2 = (this.points2[this.select].p[j].x - yuanX2) * (Math.cos((2 * Math.PI / 360) * 90)) - (this.points2[this.select].p[j].y - yuanY2) * (Math.sin((2 * Math.PI / 360) * 90)) + yuanX2;
-          xiany2 = (this.points2[this.select].p[j].x - yuanX2) * (Math.sin((2 * Math.PI / 360) * 90)) + (this.points2[this.select].p[j].y - yuanY2) * (Math.cos((2 * Math.PI / 360) * 90)) + yuanY2;
-          this.points2[this.select].p[j].x = xianx2;
-          this.points2[this.select].p[j].y = xiany2;
-        }
-        // 更新画布
-        this.draw();
-
-        //}
-      },
-      drag(e) {
-        // 判断圆圈是否开始拖拽
-        console.log("move")
-        if (this.isDragging == true) {
-          // 判断拖拽对象是否存在
-
-          // 取得鼠标位置
-          if(e.touches){
-            var x = e.touches[0].pageX - canvas.offsetLeft;
-            var y = e.touches[0].pageY - canvas.offsetTop;
-          }
-          else{
-            var x = e.pageX - canvas.offsetLeft;
-            var y = e.pageY - canvas.offsetTop;
-          }
-          // console.log(x,y);
-
-          var changdu = this.points[this.select].p.length;
-
-          var xx = x - this.lastx;
-          var yy = y - this.lasty;
-          // if(this.bordor(xx, yy)) {   //判断是否到四周
-          if (this.points2[this.select].xmin + xx > 0 && this.points2[this.select].xmax + xx < this.canvasWidth && this.points2[this.select].ymin + yy > 0 && this.points2[this.select].ymax + yy < this.canvasHeight) {
-            for (var j = 0; j < changdu; j++) {//将图形拖动到鼠标相应位置
-              this.points[this.select].p[j].x = this.points2[this.select].p[j].x + xx;
-              this.points[this.select].p[j].y = this.points2[this.select].p[j].y + yy;
-              this.points[this.select].xmin = this.points2[this.select].xmin + xx;
-              this.points[this.select].xmax = this.points2[this.select].xmax + xx;
-              this.points[this.select].ymin = this.points2[this.select].ymin + yy;
-              this.points[this.select].ymax = this.points2[this.select].ymax + yy;
+          document.onmouseup = (e) => { // 移动结束时的操作
+            document.onmousemove = null
+            el.style.transition = "all 1s"
+            el.style.zIndex = 1
+            const left = parseInt(el.style.left) / 100
+            const top = parseInt(el.style.top) / 100
+            if (left < 8 && top < 6) { // 判断拼图移到了卡槽区域
+              const toLeft = left < 7.5 ? Math.round(left) : 7
+              const toTop = top < 5.5 ? Math.round(top) : 5
+              const part = _this.partList.find((elem) => elem.x == (8 - toLeft) && elem.y == (6 - toTop))
+              if (!part.fill) { // 如果卡槽是空的，将拼图移入离它最近的卡槽里并检查是否是正确的放入正确的卡槽里
+                const partIndex = _this.partList.indexOf(part)
+                _this.partList[partIndex].fill = true
+                el.style.left = toLeft * 100 + 'px'
+                el.style.top = toTop * 100 + 'px'
+                _this.checkImg(_this, el, index)
+              }
             }
           }
-          //  }
-          // 更新画布
-          this.draw();
-
         }
       },
-
-      //判断是否在图形内
-      anglecompult(anglepostions, x, y){      //判断是否在第一个图形里面 解决方案为切割为两个矩形 然后再用reactcompult判断
-        var test1 = [{x:anglepostions[0].x,y:anglepostions[0].y}, {x:anglepostions[1].x,y:anglepostions[1].y}, {x:anglepostions[2].x,y:anglepostions[2].y}, {x:anglepostions[0].x,y:anglepostions[2].y}];
-        var test2 = [{x:anglepostions[0].x,y:anglepostions[2].y}, {x:anglepostions[3].x,y:anglepostions[3].y}, {x:anglepostions[4].x,y:anglepostions[4].y}, {x:anglepostions[5].x,y:anglepostions[5].y}];
-        if(this.reactcompult(test1, x, y) || this.reactcompult(test2, x, y)){
-          return true;
-        }
-        else {
-          return false;
-        }
-      },
-      reactcompult(reactpostions, x, y){   //判断是否在第二个图形里面  判断是否在矩形内 这个判断只能针对非斜45放置的矩形
-        var xmin, xmax, ymin, ymax;
-        xmin = xmax = reactpostions[0].x;
-        ymin = ymax = reactpostions[0].y;
-        for (var i = 0; i < reactpostions.length; i++) {
-          if (reactpostions[i].x < xmin) {
-            xmin = reactpostions[i].x;
+      rotateImg(e, index) { // 旋转当前拼图
+        if (this.rotateStatus && !this.partList[index].check) { // 拼图可以旋转并且并未正确放置
+          const el = e.target
+          this.rotateStatus = false
+          el.style.transition = "all 1s"
+          let angle = this.getAngle(el)
+          if (angle < 0) { // 计算出的角度为270度时会返回-0.25，将其转为0.75以实现正确的旋转
+            angle = 0.75
           }
-          if (reactpostions[i].x > xmax) {
-            xmax = reactpostions[i].x;
-          }
-          if (reactpostions[i].y < ymin) {
-            ymin = reactpostions[i].y;
-          }
-          if (reactpostions[i].y > ymax) {
-            ymax = reactpostions[i].y;
-          }
-        }
-
-        if (xmin < x && xmax > x && ymin < y && ymax > y) {
-          return true;
-        } else {
-          return false;
+          el.style.transform = `rotate(${angle + 0.25}turn)`
+          const _this = this
+          setTimeout(() => {
+            if (angle + 0.25 == 1) { // 如果旋转了360度将其重置为0度，不然再次旋转会变成逆时针旋转，然后检查该拼图是否正确的放置在正确的卡槽里
+              el.style.transition = "none"
+              el.style.transform = `rotate(0turn)`
+              this.checkImg(this, el, index)
+            }
+            _this.rotateStatus = true
+          }, 1000);
         }
       },
-      thirdcompult(thirdpostions, x, y){
-        var test1 = [{x:thirdpostions[0].x,y:thirdpostions[0].y}, {x:thirdpostions[1].x,y:thirdpostions[1].y}, {x:thirdpostions[2].x,y:thirdpostions[2].y}, {x:thirdpostions[7].x,y:thirdpostions[7].y}];
-        var test2 = [{x:thirdpostions[3].x,y:thirdpostions[3].y}, {x:thirdpostions[4].x,y:thirdpostions[4].y}, {x:thirdpostions[5].x,y:thirdpostions[5].y}, {x:thirdpostions[6].x,y:thirdpostions[6].y}];
-        if(this.reactcompult(test1, x, y) || this.reactcompult(test2, x, y)){
-          return true;
-        }
-        else {
-          return false;
+      getAngle(el) { // 判断当前元素旋转角度，此段方法是搜出来的，对搜索的结果进行了修改，获取的值以turn为角度单位
+        const st = window.getComputedStyle(el, null)
+        const tr = st.getPropertyValue("-webkit-transform") ||
+                st.getPropertyValue("-moz-transform") ||
+                st.getPropertyValue("-ms-transform") ||
+                st.getPropertyValue("-o-transform") ||
+                st.getPropertyValue("transform") ||
+                "FAIL"
+        const values = tr.split('(')[1].split(')')[0].split(',')
+        const a = values[0]
+        const b = values[1]
+        return Math.round(Math.atan2(b, a) * (180 / Math.PI)) / 360
+      },
+      checkImg(_this, el, index) { // 检查图片位置是否正确
+        const left = parseInt(el.style.left) / 100
+        const top = parseInt(el.style.top) / 100
+        if (left < 8 && top < 6) { // 判断拼图移到了卡槽区域
+          const toLeft = left < 7.5 ? Math.round(left) : 7
+          const toTop = top < 5.5 ? Math.round(top) : 5
+          const img = _this.imgList[index]
+          if (img.x == (8 - toLeft) && img.y == (6 - toTop) && _this.getAngle(el) == 0) { // 拼图的x，y与当前所在卡槽的位置对应上且拼图角度是正确的
+            _this.partList[index].check = true
+            // _this.$refs.ding.play() // 游戏音效
+            el.style.animation = 'checked 2s'
+            el.style.zIndex = 0
+          }
+          if (_this.partList.every((elem) => elem.check)) {
+            // _this.$refs.jubilate.play() // 游戏音效
+            alert("已完成拼图")
+          }
         }
       },
-      fouthcompult(fouthpostions, x, y){
-        var test1 = [{x:fouthpostions[0].x,y:fouthpostions[0].y}, {x:fouthpostions[1].x,y:fouthpostions[1].y}, {x:fouthpostions[2].x,y:fouthpostions[2].y}, {x:fouthpostions[3].x,y:fouthpostions[3].y}];
-        var test2 = [{x:fouthpostions[4].x,y:fouthpostions[4].y}, {x:fouthpostions[5].x,y:fouthpostions[5].y}, {x:fouthpostions[6].x,y:fouthpostions[6].y}, {x:fouthpostions[7].x,y:fouthpostions[7].y}];
-        if(this.reactcompult(test1, x, y) || this.reactcompult(test2, x, y)){
-          return true;
-        }
-        else {
-          return false;
+      chooseImg(e) { // 点击上传图片更新图片
+        const file = event.target.files[0]
+        const reader = new FileReader()
+        const _this = this
+        reader.readAsDataURL(file)
+        reader.onload = function () { // 此处因this指向问题采用function声明函数，并未使用箭头函数
+          _this.partList = []
+          for (let i = 0; i < 48; i++) { // 循环遍历生成拼图数组与对应卡槽数组，重置卡槽，不重置的话，之前正确放置的拼图块会出现不可移动的问题
+            _this.partList.push({ // 卡槽数组
+              x: 8 - i % 8,
+              y: 6 - parseInt((i / 8)),
+              fill: false,
+              check: false
+            })
+          }
+          _this.image = this.result
         }
       },
-
-      handleCommand(command) {
-        this.$message('click on item ' + command);
+      randomStyle(img) { // 规律生成拼图块，随机生成位置与旋转角度，更新图片
+        console.log(this.image)
+        return (img) => {
+          return {
+            'backgroundPosition': `${img.x * 100}px ${img.y * 100}px`,
+            'top': Math.random() * 500 + 150 + 'px',
+            'left': Math.random() * 600 + 800 + 'px',
+            'transform': `rotate(${img.rotate}turn)`,
+            'backgroundImage': `url(${this.image})`
+          }
+        }
       }
 
     }
@@ -392,11 +180,47 @@
 </script>
 
 <style>
-  .el-dropdown-link {
-    cursor: pointer;
-    color: #409EFF;
+  .pintu_area {
+    display: flex;
+    flex-wrap: wrap;
+    width: 800px;
+    height: 600px;
+    background-color: rgba(0, 0, 0, 0.4);
   }
-  .el-icon-arrow-down {
-    font-size: 12px;
+
+  .pintu_part {
+    width: 100px;
+    height: 100px;
+    border: 1px solid #fff;
+  }
+
+  .part_img {
+    width: 100px;
+    height: 100px;
+    background-size: 800px 600px;
+    position: absolute;
+  }
+
+  .thumb,
+  input {
+    width: 200px;
+    height: 150px;
+    position: absolute;
+    top: 0;
+    right: 0;
+  }
+
+  input {
+    opacity: 0;
+  }
+
+  @keyframes checked {
+    50% {
+      box-shadow: 0 0 20px #ffff00;
+    }
+
+    to {
+      box-shadow: none;
+    }
   }
 </style>
