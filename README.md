@@ -3,7 +3,7 @@
 ![image](https://github.com/pumpkin12135/puzzle/blob/main/img/hello.png)
 ***
 ### 具体功能
-:simple_smile:鼠标左键可拖动拼图  
+:sunglasses:鼠标左键可拖动拼图  
 :grin:鼠标右键点击拼图选中  
 :wink:拼图到对应位置后，自动进入框中  
 ***
